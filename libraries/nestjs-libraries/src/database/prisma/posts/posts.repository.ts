@@ -571,6 +571,11 @@ export class PostsRepository {
         await this._post.model.post.upsert({
           where: {
             id: value.id || uuidv4(),
+            // Public API callers may provide a stable id for retry-safe
+            // drafts. Keep the update branch tenant-scoped: an id belonging
+            // to another organization must fall through to a conflicting
+            // create, never mutate or transfer that organization's post.
+            ...(value.id ? { organizationId: orgId } : {}),
           },
           create: { ...updateData('create') },
           update: {
