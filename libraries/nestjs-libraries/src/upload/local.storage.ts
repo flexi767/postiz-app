@@ -73,7 +73,10 @@ export class LocalStorage implements IUploadProvider {
     return process.env.FRONTEND_URL + '/uploads' + publicPath;
   }
 
-  async uploadFile(file: Express.Multer.File): Promise<any> {
+  async uploadFile(
+    file: Express.Multer.File,
+    stableKey?: string
+  ): Promise<any> {
     try {
       const detected = await fromBuffer(file.buffer);
       if (!detected || !LOCAL_STORAGE_ALLOWED_MIME.has(detected.mime)) {
@@ -87,14 +90,16 @@ export class LocalStorage implements IUploadProvider {
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
 
-      const innerPath = `/${year}/${month}/${day}`;
+      const innerPath = stableKey ? '/idempotent' : `/${year}/${month}/${day}`;
       const dir = `${this.uploadDirectory}${innerPath}`;
       mkdirSync(dir, { recursive: true });
 
-      const randomName = Array(32)
-        .fill(null)
-        .map(() => Math.round(Math.random() * 16).toString(16))
-        .join('');
+      const randomName =
+        stableKey ||
+        Array(32)
+          .fill(null)
+          .map(() => Math.round(Math.random() * 16).toString(16))
+          .join('');
 
       const filePath = `${dir}/${randomName}${safeExt}`;
       const publicPath = `${innerPath}/${randomName}${safeExt}`;

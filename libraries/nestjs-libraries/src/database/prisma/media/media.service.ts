@@ -57,8 +57,38 @@ export class MediaService {
     }
   }
 
-  saveFile(org: string, fileName: string, filePath: string, originalName?: string) {
-    return this._mediaRepository.saveFile(org, fileName, filePath, originalName);
+  saveFile(
+    org: string,
+    fileName: string,
+    filePath: string,
+    originalName?: string
+  ) {
+    return this._mediaRepository.saveFile(
+      org,
+      fileName,
+      filePath,
+      originalName
+    );
+  }
+
+  saveFileIdempotently(
+    org: string,
+    id: string,
+    fileName: string,
+    filePath: string,
+    originalName?: string
+  ) {
+    return this._mediaRepository.saveFileIdempotently(
+      org,
+      id,
+      fileName,
+      filePath,
+      originalName
+    );
+  }
+
+  getMediaByIdForOrg(org: string, id: string) {
+    return this._mediaRepository.getMediaByIdForOrg(org, id);
   }
 
   getMedia(org: string, page: number, search?: string) {

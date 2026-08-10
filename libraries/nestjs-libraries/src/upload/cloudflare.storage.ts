@@ -115,13 +115,16 @@ class CloudflareStorage implements IUploadProvider {
     return `${this._uploadUrl}/${id}.${extension}`;
   }
 
-  async uploadFile(file: Express.Multer.File): Promise<any> {
+  async uploadFile(
+    file: Express.Multer.File,
+    stableKey?: string
+  ): Promise<any> {
     try {
       const detected = await fromBuffer(file.buffer);
       if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
         throw new Error('Unsupported file type.');
       }
-      const id = makeId(10);
+      const id = stableKey || makeId(10);
       const extension = detected.ext;
       const safeContentType = detected.mime;
 

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpException,
   Param,
   Post,
@@ -62,6 +63,7 @@ import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abst
 import { PostValidationException } from '@gitroom/backend/api/routes/posts.validation.exception';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { createHash } from 'crypto';
 
 @ApiTags('Public API')
 @Controller('/public/v1')
@@ -82,14 +84,46 @@ export class PublicIntegrationsController {
   @UsePipes(new CustomFileValidationPipe())
   async uploadSimple(
     @GetOrgFromRequest() org: Organization,
-    @UploadedFile('file') file: Express.Multer.File
+    @UploadedFile('file') file: Express.Multer.File,
+    @Headers('idempotency-key') idempotencyKey?: string
   ) {
     Sentry.metrics.count('public_api-request', 1);
     if (!file) {
       throw new HttpException({ msg: 'No file provided' }, 400);
     }
 
-    const getFile = await this.storage.uploadFile(file);
+    const normalizedKey = idempotencyKey?.trim();
+    if (normalizedKey && !/^[A-Za-z0-9._:-]{1,200}$/.test(normalizedKey)) {
+      throw new HttpException({ msg: 'Invalid Idempotency-Key' }, 400);
+    }
+    const digest = normalizedKey
+      ? createHash('sha256')
+          .update('postiz-public-upload:v1\0')
+          .update(org.id)
+          .update('\0')
+          .update(normalizedKey)
+          .digest('hex')
+      : undefined;
+    const mediaId = digest ? `public_upload_${digest}` : undefined;
+    if (mediaId) {
+      const existing = await this._mediaService.getMediaByIdForOrg(
+        org.id,
+        mediaId
+      );
+      if (existing) return existing;
+    }
+
+    // Stable storage keys make concurrent retries overwrite the same object;
+    // the deterministic media-row upsert below makes the database converge too.
+    const getFile = await this.storage.uploadFile(file, digest);
+    if (mediaId) {
+      return this._mediaService.saveFileIdempotently(
+        org.id,
+        mediaId,
+        getFile.originalname,
+        getFile.path
+      );
+    }
     return this._mediaService.saveFile(
       org.id,
       getFile.originalname,
