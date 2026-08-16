@@ -6,11 +6,15 @@ import { isGeneralServerSide } from '@gitroom/helpers/utils/is.general.server.si
 import Link from 'next/link';
 import { getT } from '@gitroom/react/translation/get.translation.service.backend';
 import { LoginWithOidc } from '@gitroom/frontend/components/auth/login.with.oidc';
+import { resolveScrapeUiSsoEntryUrl } from '@gitroom/frontend/components/auth/scrapeui-sso-entry';
+import { redirect } from 'next/navigation';
 export const metadata: Metadata = {
   title: `${isGeneralServerSide() ? 'Postiz' : 'Gitroom'} Register`,
   description: '',
 };
 export default async function Auth(params: {searchParams: Promise<{provider: string}>}) {
+  const scrapeUiEntry = resolveScrapeUiSsoEntryUrl(process.env.SCRAPEUI_SSO_URL);
+  if (scrapeUiEntry) redirect(scrapeUiEntry);
   const t = await getT();
   if (process.env.DISABLE_REGISTRATION === 'true') {
     const canRegister = (
