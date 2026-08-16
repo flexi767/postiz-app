@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
+import {
+  isNativePostizAuthFlow,
+  resolveScrapeUiSsoEntryUrl,
+} from '@gitroom/frontend/components/auth/scrapeui-sso-entry';
 import acceptLanguage from 'accept-language';
 import {
   cookieName,
@@ -12,6 +16,27 @@ import {
   resolveSupportedLanguage,
 } from '@gitroom/react/translation/i18n.config';
 acceptLanguage.languages(languages);
+
+const delegatedAuthEntryPaths = new Set([
+  '/auth',
+  '/auth/login',
+  '/auth/login-required',
+  '/auth/register',
+]);
+
+function persistLanguageCookie(
+  response: NextResponse,
+  savedLanguage: string | undefined,
+  language: string
+) {
+  if (savedLanguage === language) return;
+  response.cookies.set(cookieName, language, {
+    path: '/',
+    sameSite: 'lax',
+    maxAge: languageCookieMaxAgeSeconds,
+    ...(!process.env.NOT_SECURED ? { secure: true } : {}),
+  });
+}
 
 // This function can be marked `async` if using `await` inside
 export async function proxy(request: NextRequest) {
@@ -57,14 +82,7 @@ export async function proxy(request: NextRequest) {
     return topResponse;
   }
 
-  if (savedLanguage !== lng) {
-    topResponse.cookies.set(cookieName, lng, {
-      path: '/',
-      sameSite: 'lax',
-      maxAge: languageCookieMaxAgeSeconds,
-      ...(!process.env.NOT_SECURED ? { secure: true } : {}),
-    });
-  }
+  persistLanguageCookie(topResponse, savedLanguage, lng);
 
   // If the URL is logout, delete the cookie and redirect to login
   if (nextUrl.href.indexOf('/auth/logout') > -1) {
@@ -84,6 +102,26 @@ export async function proxy(request: NextRequest) {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
     });
     return response;
+  }
+
+  const normalizedPathname = nextUrl.pathname.replace(/\/+$/, '') || '/';
+  const isNativeAuthFlow =
+    normalizedPathname === '/auth' &&
+    isNativePostizAuthFlow(nextUrl.searchParams);
+  if (
+    !authCookie &&
+    delegatedAuthEntryPaths.has(normalizedPathname) &&
+    !isNativeAuthFlow
+  ) {
+    const scrapeUiEntry = resolveScrapeUiSsoEntryUrl(
+      process.env.SCRAPEUI_SSO_URL,
+      lng
+    );
+    if (scrapeUiEntry) {
+      const response = NextResponse.redirect(scrapeUiEntry);
+      persistLanguageCookie(response, savedLanguage, lng);
+      return response;
+    }
   }
 
   if (

@@ -6,7 +6,10 @@ import { isGeneralServerSide } from '@gitroom/helpers/utils/is.general.server.si
 import Link from 'next/link';
 import { getT } from '@gitroom/react/translation/get.translation.service.backend';
 import { LoginWithOidc } from '@gitroom/frontend/components/auth/login.with.oidc';
-import { resolveScrapeUiSsoEntryUrl } from '@gitroom/frontend/components/auth/scrapeui-sso-entry';
+import {
+  isNativePostizAuthFlow,
+  resolveScrapeUiSsoEntryUrl,
+} from '@gitroom/frontend/components/auth/scrapeui-sso-entry';
 import { redirect } from 'next/navigation';
 import { cookies, headers } from 'next/headers';
 import {
@@ -20,9 +23,13 @@ export const metadata: Metadata = {
   description: '',
 };
 export default async function Auth(params: {
-  searchParams: Promise<{ provider: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+  const [cookieStore, headerStore, searchParams] = await Promise.all([
+    cookies(),
+    headers(),
+    params.searchParams,
+  ]);
   const language = resolveSupportedLanguage(
     cookieStore.get(cookieName)?.value ||
       headerStore.get(headerName) ||
@@ -32,13 +39,15 @@ export default async function Auth(params: {
     process.env.SCRAPEUI_SSO_URL,
     language
   );
-  if (scrapeUiEntry) redirect(scrapeUiEntry);
+  if (scrapeUiEntry && !isNativePostizAuthFlow(searchParams)) {
+    redirect(scrapeUiEntry);
+  }
   const t = await getT();
   if (process.env.DISABLE_REGISTRATION === 'true') {
     const canRegister = (
       await (await internalFetch('/auth/can-register')).json()
     ).register;
-    if (!canRegister && !(await params?.searchParams)?.provider) {
+    if (!canRegister && !searchParams.provider) {
       return (
         <>
           <LoginWithOidc />
