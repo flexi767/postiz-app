@@ -16,10 +16,11 @@ import UtmSaver from '@gitroom/helpers/utils/utm.saver';
 import { DubAnalytics } from '@gitroom/frontend/components/layout/dubAnalytics';
 import { FacebookComponent } from '@gitroom/frontend/components/layout/facebook.component';
 import { GoogleTagManagerComponent } from '@gitroom/frontend/components/layout/gtm.component';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import {
   cookieName,
   fallbackLng,
+  headerName,
   resolveSupportedLanguage,
 } from '@gitroom/react/translation/i18n.config';
 import { HtmlComponent } from '@gitroom/frontend/components/layout/html.component';
@@ -33,15 +34,17 @@ const jakartaSans = Plus_Jakarta_Sans({
 });
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const cookieStore = await cookies();
+  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
   const language = resolveSupportedLanguage(
-    cookieStore.get(cookieName)?.value || fallbackLng
+    cookieStore.get(cookieName)?.value ||
+      headerStore.get(headerName) ||
+      fallbackLng
   );
   const Plausible = !!process.env.STRIPE_PUBLISHABLE_KEY
     ? PlausibleProvider
     : Fragment;
   return (
-    <html>
+    <html lang={language}>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         {!!process.env.DATAFAST_WEBSITE_ID && (

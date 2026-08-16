@@ -5,8 +5,11 @@ import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
 import acceptLanguage from 'accept-language';
 import {
   cookieName,
+  fallbackLng,
   headerName,
+  languageCookieMaxAgeSeconds,
   languages,
+  resolveSupportedLanguage,
 } from '@gitroom/react/translation/i18n.config';
 acceptLanguage.languages(languages);
 
@@ -17,27 +20,22 @@ export async function proxy(request: NextRequest) {
     request.cookies.get('auth') ||
     request.headers.get('auth') ||
     nextUrl.searchParams.get('loggedAuth');
-  const lng = request.cookies.has(cookieName)
-    ? acceptLanguage.get(request.cookies.get(cookieName).value)
+  const savedLanguage = request.cookies.get(cookieName)?.value;
+  const lng = savedLanguage
+    ? resolveSupportedLanguage(savedLanguage)
     : acceptLanguage.get(
         request.headers.get('Accept-Language') ||
           request.headers.get('accept-language')
-      );
+      ) || fallbackLng;
 
   const requestHeaders = new Headers(request.headers);
-  if (lng) {
-    requestHeaders.set(headerName, lng);
-  }
+  requestHeaders.set(headerName, lng);
 
   const topResponse = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
-
-  if (lng) {
-    topResponse.headers.set(cookieName, lng);
-  }
 
   if (nextUrl.pathname.startsWith('/modal/') && !authCookie) {
     return NextResponse.redirect(new URL(`/auth/login-required`, nextUrl.href));
@@ -57,6 +55,15 @@ export async function proxy(request: NextRequest) {
     nextUrl.href.indexOf('state=login') === -1
   ) {
     return topResponse;
+  }
+
+  if (savedLanguage !== lng) {
+    topResponse.cookies.set(cookieName, lng, {
+      path: '/',
+      sameSite: 'lax',
+      maxAge: languageCookieMaxAgeSeconds,
+      ...(!process.env.NOT_SECURED ? { secure: true } : {}),
+    });
   }
 
   // If the URL is logout, delete the cookie and redirect to login

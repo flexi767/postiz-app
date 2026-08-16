@@ -4,6 +4,7 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import {
   cookieName,
   fallbackLng,
+  languageCookieMaxAgeSeconds,
   languages,
 } from '@gitroom/react/translation/i18n.config';
 import i18next from 'i18next';
@@ -69,7 +70,12 @@ export const ChangeLanguageComponent = () => {
   const t = useT();
 
   const handleLanguageChange = (language: string) => {
-    setCookie(language);
+    setCookie(language, {
+      days: languageCookieMaxAgeSeconds / (60 * 60 * 24),
+      path: '/',
+      SameSite: 'Lax',
+      Secure: window.location.protocol === 'https:',
+    });
     i18next.changeLanguage(language);
     modals.closeCurrent();
     const rtlLanguages = ['he', 'ar'];

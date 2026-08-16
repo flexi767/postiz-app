@@ -1,22 +1,23 @@
 'use client';
-import { FC, ReactNode, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { useTranslationSettings } from '@gitroom/react/translation/get.transation.service.client';
+import { resolveSupportedLanguage } from '@gitroom/react/translation/i18n.config';
 
 export const HtmlComponent: FC = () => {
   const settings = useTranslationSettings();
   const [dir, setDir] = useState(settings.dir());
 
   useEffect(() => {
-    settings.on('languageChanged', (lng) => {
+    const handleLanguageChanged = (language: string) => {
       setDir(settings.dir());
-    });
-  }, []);
+      document.documentElement.lang = resolveSupportedLanguage(language);
+    };
+    settings.on('languageChanged', handleLanguageChanged);
+    return () => settings.off('languageChanged', handleLanguageChanged);
+  }, [settings]);
 
   useEffect(() => {
-    const htmlElement = document.querySelector('html');
-    if (htmlElement) {
-      htmlElement.setAttribute('dir', dir);
-    }
+    document.documentElement.setAttribute('dir', dir);
   }, [dir]);
 
   return null;

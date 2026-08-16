@@ -1,5 +1,6 @@
 export const fallbackLng = 'en';
 export const languages = [fallbackLng, 'de', 'ru', 'bg'];
+export const languageCookieMaxAgeSeconds = 60 * 60 * 24 * 365;
 
 export function resolveSupportedLanguage(value: string | undefined): string {
   return value && languages.includes(value) ? value : fallbackLng;
