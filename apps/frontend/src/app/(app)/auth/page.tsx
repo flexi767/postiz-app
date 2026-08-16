@@ -8,12 +8,30 @@ import { getT } from '@gitroom/react/translation/get.translation.service.backend
 import { LoginWithOidc } from '@gitroom/frontend/components/auth/login.with.oidc';
 import { resolveScrapeUiSsoEntryUrl } from '@gitroom/frontend/components/auth/scrapeui-sso-entry';
 import { redirect } from 'next/navigation';
+import { cookies, headers } from 'next/headers';
+import {
+  cookieName,
+  fallbackLng,
+  headerName,
+  resolveSupportedLanguage,
+} from '@gitroom/react/translation/i18n.config';
 export const metadata: Metadata = {
   title: `${isGeneralServerSide() ? 'Postiz' : 'Gitroom'} Register`,
   description: '',
 };
-export default async function Auth(params: {searchParams: Promise<{provider: string}>}) {
-  const scrapeUiEntry = resolveScrapeUiSsoEntryUrl(process.env.SCRAPEUI_SSO_URL);
+export default async function Auth(params: {
+  searchParams: Promise<{ provider: string }>;
+}) {
+  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+  const language = resolveSupportedLanguage(
+    cookieStore.get(cookieName)?.value ||
+      headerStore.get(headerName) ||
+      fallbackLng
+  );
+  const scrapeUiEntry = resolveScrapeUiSsoEntryUrl(
+    process.env.SCRAPEUI_SSO_URL,
+    language
+  );
   if (scrapeUiEntry) redirect(scrapeUiEntry);
   const t = await getT();
   if (process.env.DISABLE_REGISTRATION === 'true') {
