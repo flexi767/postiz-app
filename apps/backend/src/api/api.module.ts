@@ -43,6 +43,7 @@ import { GoogleProvider } from '@gitroom/backend/services/auth/providers/google.
 import { FarcasterProvider } from '@gitroom/backend/services/auth/providers/farcaster.provider';
 import { WalletProvider } from '@gitroom/backend/services/auth/providers/wallet.provider';
 import { OauthProvider } from '@gitroom/backend/services/auth/providers/oauth.provider';
+import { ScrapeUiSsoController } from '@gitroom/backend/api/routes/scrapeui-sso.controller';
 
 const authenticatedController = [
   UsersController,
@@ -71,6 +72,7 @@ const authenticatedController = [
     RootController,
     StripeController,
     AuthController,
+    ScrapeUiSsoController,
     PublicController,
     MonitorController,
     EnterpriseController,

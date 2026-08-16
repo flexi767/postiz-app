@@ -43,6 +43,7 @@ model Organization {
   webhooks            Webhooks[]
   oauthApp            OAuthApp[]
   oauthAuthorizations OAuthAuthorization[]
+  scrapeUiSsoIdentity ScrapeUiSsoIdentity?
 
   @@index([apiKey])
   @@index([streakSince])
@@ -113,6 +114,7 @@ model User {
   sendFailureEmails     Boolean              @default(true)
   sendStreakEmails      Boolean              @default(true)
   oauthAuthorizations   OAuthAuthorization[]
+  scrapeUiSsoIdentity   ScrapeUiSsoIdentity?
 
   @@unique([email, providerName])
   @@index([lastReadNotifications])
@@ -146,6 +148,32 @@ model UserOrganization {
 
   @@unique([userId, organizationId])
   @@index([disabled])
+}
+
+model ScrapeUiSsoIdentity {
+  id             String               @id @default(uuid())
+  dealerId       String               @unique
+  organizationId String               @unique
+  userId         String               @unique
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tickets        ScrapeUiSsoTicket[]
+}
+
+model ScrapeUiSsoTicket {
+  id         String              @id @default(uuid())
+  tokenHash  String              @unique
+  identityId String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  identity   ScrapeUiSsoIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade)
+
+  @@index([identityId])
+  @@index([expiresAt])
 }
 
 model GitHub {
