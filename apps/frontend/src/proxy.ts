@@ -3,8 +3,8 @@ import type { NextRequest } from 'next/server';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
 import {
-  isNativePostizAuthFlow,
   resolveScrapeUiSsoEntryUrl,
+  shouldDelegateScrapeUiAuthEntry,
 } from '@gitroom/frontend/components/auth/scrapeui-sso-entry';
 import acceptLanguage from 'accept-language';
 import {
@@ -16,13 +16,6 @@ import {
   resolveSupportedLanguage,
 } from '@gitroom/react/translation/i18n.config';
 acceptLanguage.languages(languages);
-
-const delegatedAuthEntryPaths = new Set([
-  '/auth',
-  '/auth/login',
-  '/auth/login-required',
-  '/auth/register',
-]);
 
 function persistLanguageCookie(
   response: NextResponse,
@@ -104,14 +97,12 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  const normalizedPathname = nextUrl.pathname.replace(/\/+$/, '') || '/';
-  const isNativeAuthFlow =
-    normalizedPathname === '/auth' &&
-    isNativePostizAuthFlow(nextUrl.searchParams);
   if (
-    !authCookie &&
-    delegatedAuthEntryPaths.has(normalizedPathname) &&
-    !isNativeAuthFlow
+    shouldDelegateScrapeUiAuthEntry(
+      nextUrl.pathname,
+      Boolean(authCookie),
+      nextUrl.searchParams
+    )
   ) {
     const scrapeUiEntry = resolveScrapeUiSsoEntryUrl(
       process.env.SCRAPEUI_SSO_URL,

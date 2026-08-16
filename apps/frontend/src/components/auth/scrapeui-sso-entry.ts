@@ -4,6 +4,13 @@ type AuthSearchParams =
   | Pick<URLSearchParams, 'get'>
   | Record<string, string | string[] | undefined>;
 
+const delegatedAuthEntryPaths = new Set([
+  '/auth',
+  '/auth/login',
+  '/auth/login-required',
+  '/auth/register',
+]);
+
 function getFirstSearchParam(searchParams: AuthSearchParams, name: string) {
   const getter = searchParams.get;
   if (typeof getter === 'function') return getter.call(searchParams, name);
@@ -18,6 +25,21 @@ export function isNativePostizAuthFlow(searchParams: AuthSearchParams) {
   const provider = getFirstSearchParam(searchParams, 'provider');
   const code = getFirstSearchParam(searchParams, 'code');
   return Boolean(org || (provider && code));
+}
+
+export function shouldDelegateScrapeUiAuthEntry(
+  pathname: string,
+  isAuthenticated: boolean,
+  searchParams: AuthSearchParams
+) {
+  const normalizedPathname = pathname.replace(/\/+$/, '') || '/';
+  const isNativeAuthFlow =
+    normalizedPathname === '/auth' && isNativePostizAuthFlow(searchParams);
+  return (
+    !isAuthenticated &&
+    delegatedAuthEntryPaths.has(normalizedPathname) &&
+    !isNativeAuthFlow
+  );
 }
 
 export function resolveScrapeUiSsoEntryUrl(
