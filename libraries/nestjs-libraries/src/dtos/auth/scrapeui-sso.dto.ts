@@ -1,5 +1,6 @@
 import {
   IsDefined,
+  IsIn,
   IsOptional,
   IsString,
   Matches,
@@ -34,4 +35,9 @@ export class ScrapeUiSsoConsumeDto {
   @IsOptional()
   @MaxLength(256)
   redirect?: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['bg', 'en', 'de', 'ru'])
+  locale?: string;
 }

@@ -32,6 +32,15 @@ function authCookieOptions() {
   };
 }
 
+function languageCookieOptions() {
+  return {
+    sameSite: 'lax' as const,
+    path: '/',
+    ...(!process.env.NOT_SECURED ? { secure: true } : {}),
+    expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+  };
+}
+
 @ApiTags('Auth')
 @Controller('/auth/scrapeui-sso')
 export class ScrapeUiSsoController {
@@ -43,7 +52,10 @@ export class ScrapeUiSsoController {
     @Body() body: ScrapeUiSsoTicketDto
   ) {
     this.sso.assertTrustedSecret(secret);
-    const { organizationId, apiKey } = await this.sso.provision(body.dealerId, body.dealerName);
+    const { organizationId, apiKey } = await this.sso.provision(
+      body.dealerId,
+      body.dealerName
+    );
     return { organizationId, apiKey };
   }
 
@@ -62,10 +74,12 @@ export class ScrapeUiSsoController {
     @Res({ passthrough: false }) response: Response
   ) {
     const session = await this.sso.consume(query.ticket);
-    if (!session) throw new UnauthorizedException('Invalid or expired SSO ticket');
+    if (!session)
+      throw new UnauthorizedException('Invalid or expired SSO ticket');
 
     response.cookie('auth', session.jwt, authCookieOptions());
     response.cookie('showorg', session.organizationId, authCookieOptions());
+    response.cookie('i18next', query.locale ?? 'en', languageCookieOptions());
     if (process.env.NOT_SECURED) {
       response.header('auth', session.jwt);
       response.header('showorg', session.organizationId);

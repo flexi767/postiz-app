@@ -20,6 +20,7 @@ import { cookies } from 'next/headers';
 import {
   cookieName,
   fallbackLng,
+  resolveSupportedLanguage,
 } from '@gitroom/react/translation/i18n.config';
 import { HtmlComponent } from '@gitroom/frontend/components/layout/html.component';
 import Script from 'next/script';
@@ -33,7 +34,9 @@ const jakartaSans = Plus_Jakarta_Sans({
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
-  const language = cookieStore.get(cookieName)?.value || fallbackLng;
+  const language = resolveSupportedLanguage(
+    cookieStore.get(cookieName)?.value || fallbackLng
+  );
   const Plausible = !!process.env.STRIPE_PUBLISHABLE_KEY
     ? PlausibleProvider
     : Fragment;
